@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="color-scheme" content="light dark"/>
+<link rel="icon" href="data:,"/>
+<title>网速测试</title>
+<style>
+  :root{
+    --bg:#eef1f3; --panel:#ffffff; --panel-2:#f7f8f9; --line:#e2e6e9;
+    --text:#101418; --muted:#6b767f; --muted2:#98a2ab;
+    --teal:#0a9d8a; --teal-dark:#078372; --teal-light:#e6f6f3;
+    --amber:#d97706; --amber-light:#fef3c7;
+    --blue:#2563eb; --red:#dc2626;
+    --shadow:0 8px 30px rgba(16,20,24,.08), 0 1px 3px rgba(16,20,24,.06);
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0d1114; --panel:#161c20; --panel-2:#1c2429; --line:#263038;
+      --text:#eef2f4; --muted:#9aa7b0; --muted2:#6e7c86;
+      --teal:#14b8a0; --teal-dark:#0ea48c; --teal-light:#0f2e2a;
+      --amber-light:#2e2410;
+      --shadow:0 8px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  a{color:var(--teal);text-decoration:none}
+  button{font-family:inherit}
+
+  /* app window */
+  .app{max-width:1020px;margin:0 auto;padding:18px 18px 28px}
+  @media(min-width:760px){.app{padding:28px 24px 36px}}
+
+  /* top bar - desktop app style */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:6px 2px 18px; flex-wrap:wrap;
+  }
+  .top-left{display:flex;align-items:center;gap:12px}
+  .appicon{
+    width:42px;height:42px;border-radius:10px;background:var(--text);color:var(--bg);
+    display:grid;place-items:center;flex-shrink:0;
+  }
+  .appicon svg{width:24px;height:24px}
+  .top-left h1{font-size:20px;line-height:1;margin:0;font-weight:700;letter-spacing:-.02em}
+  .top-left p{margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1}
+  .top-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:6px 11px;font-size:12.5px;color:var(--muted);box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .pill b{color:var(--text);font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
+  .dot.off{background:#cbd5e1}
+
+  /* main card */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+  .card-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap;
+  }
+  .card-head-left{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+  .card-head-left strong{color:var(--text);font-size:13.5px}
+  .seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font-size:13px;cursor:pointer;color:var(--muted)}
+  .seg button.active{background:var(--text);color:var(--bg);font-weight:600}
+
+  .main-grid{display:grid;grid-template-columns:1fr}
+  @media(min-width:860px){.main-grid{grid-template-columns:1.15fr .85fr}}
+
+  /* left - gauge */
+  .gauge-col{padding:22px 22px 20px;border-bottom:1px solid var(--line)}
+  @media(min-width:860px){.gauge-col{border-bottom:0;border-right:1px solid var(--line);padding:26px 28px 24px}}
+  .phase-label{ text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;height:16px}
+  .phase-label.testing{color:var(--teal)}
+  .gauge-wrap{position:relative;width:100%;max-width:380px;margin:6px auto 0;aspect-ratio:1.18}
+  .gauge-wrap svg{width:100%;height:100%;display:block;overflow:visible}
+  .gauge-center{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);text-align:center;width:80%}
+  .big-num{font-size:64px;line-height:.95;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  @media(min-width:860px){.big-num{font-size:74px}}
+  .big-unit{font-size:14px;color:var(--muted);font-weight:600;margin-top:4px;letter-spacing:.06em}
+  .big-sub{font-size:12.5px;color:var(--muted2);margin-top:6px;min-height:18px}
+
+  .progress-track{height:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:14px auto 0;max-width:380px}
+  .progress-fill{height:100%;width:0%;background:var(--teal);border-radius:999px;transition:width .3s ease}
+
+  .cta-row{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .btn-primary{
+    background:var(--teal);color:#fff;border:0;border-radius:999px;
+    padding:13px 34px;font-size:16px;font-weight:700;cursor:pointer;min-width:168px;
+    box-shadow:0 6px 18px rgba(10,157,138,.28); transition:.15s;
+  }
+  .btn-primary:hover{background:var(--teal-dark)}
+  .btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
+  .btn-ghost{
+    background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:999px;
+    padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  .btn-ghost:disabled{opacity:.5;cursor:not-allowed}
+
+  .live-chart{margin-top:18px}
+  .live-chart-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .live-chart canvas{width:100%;height:72px;display:block;background:var(--panel-2);border:1px solid var(--line);border-radius:10px}
+
+  /* right col */
+  .side-col{padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
+  .metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:420px){.metrics{grid-template-columns:1fr 1fr 1fr;gap:8px}}
+  .metric{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 12px 11px}
+  .metric.active{border-color:var(--teal);background:var(--teal-light)}
+  .metric-label{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.04em;display:flex;align-items:center;gap:5px}
+  .metric-val{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums;line-height:1}
+  @media(min-width:860px){.metric-val{font-size:26px}}
+  .metric-unit{font-size:11px;color:var(--muted);font-weight:600}
+  .metric-note{font-size:11px;color:var(--muted2);margin-top:3px;min-height:14px}
+
+  .verdict{border:1px solid var(--line);border-radius:12px;padding:14px 14px}
+  .verdict h3{margin:0 0 8px;font-size:13px;letter-spacing:.02em}
+  .verdict p{margin:0;font-size:13.5px;line-height:1.6;color:var(--muted)}
+  .verdict p b{color:var(--text)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .tag{font-size:12px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted)}
+  .tag.ok{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+  @media(prefers-color-scheme:dark){.tag.ok{background:#0f2e1f;border-color:#14532d;color:#4ade80}}
+  .tag.warn{border-color:#fde68a;background:#fffbeb;color:#92400e}
+  @media(prefers-color-scheme:dark){.tag.warn{background:#2e2410;border-color:#713f12;color:#fbbf24}}
+  .tag.no{opacity:.55}
+
+  .detail-list{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .detail-row{display:flex;justify-content:space-between;gap:16px;padding:10px 14px;font-size:13px;border-bottom:1px solid var(--line)}
+  .detail-row:last-child{border-bottom:0}
+  .detail-row span:first-child{color:var(--muted)}
+  .detail-row span:last-child{font-weight:600;text-align:right;font-variant-numeric:tabular-nums;word-break:break-all}
+
+  .actions-row{display:flex;gap:8px;flex-wrap:wrap}
+  .small-btn{flex:1;min-width:110px;text-align:center;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)}
+  .small-btn:hover{background:var(--panel-2)}
+  .copied{font-size:12px;color:var(--teal);text-align:center;min-height:16px}
+
+  /* history */
+  .below{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+  @media(min-width:860px){.below{grid-template-columns:1.3fr .7fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .panel-head h2{margin:0;font-size:14px;font-weight:700}
+  .panel-head span{font-size:12px;color:var(--muted)}
+  .history-empty{padding:22px 18px;color:var(--muted);font-size:13.5px;line-height:1.6;text-align:center}
+  .hrow{display:grid;grid-template-columns:86px 1fr 1fr 1fr;gap:8px;padding:11px 18px;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+  .hrow:last-child{border-bottom:0}
+  .hrow.head{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;padding:9px 18px;background:var(--panel-2)}
+  .hrow b{font-variant-numeric:tabular-nums}
+  .explain{padding:16px 18px;font-size:13.5px;line-height:1.75;color:var(--muted)}
+  .explain b{color:var(--text)}
+  .explain ul{margin:8px 0 0;padding-left:18px}
+  .explain li{margin:4px 0}
+
+  .foot{margin-top:16px;text-align:center;font-size:12px;color:var(--muted2);line-height:1.6;padding:0 10px}
+  .error-banner{display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin-top:12px}
+  @media(prefers-color-scheme:dark){.error-banner{background:#2a1212;border-color:#7f1d1d;color:#fca5a5}}
+  .error-banner.show{display:block}
+  .error-banner.warn{background:var(--amber-light);border-color:#fde68a;color:#92400e}
+  @media(prefers-color-scheme:dark){.error-banner.warn{border-color:#713f12;color:#fbbf24}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="top-left">
+      <div class="appicon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 15.5a6 6 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/><path d="M12 12 L16 7"/></svg>
+      </div>
+      <div>
+        <h1>网速测试</h1>
+        <p>下载 · 上传 · 延迟 · 抖动，一次测清</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill"><span class="dot" id="netDot"></span><span id="netStatus">正在检测网络…</span></span>
+      <span class="pill">节点 <b id="nodeName">自动选择</b></span>
+      <span class="pill" id="connPill" style="display:none">连接 <b id="connType">—</b></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-left">
+        <span>测试模式</span>
+        <strong id="modeHint">多线程更接近日常测速软件的结果</strong>
+      </div>
+      <div class="seg" role="tablist" aria-label="线程模式">
+        <button id="segSingle">单线程</button>
+        <button id="segMulti" class="active">多线程 ×4</button>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- LEFT -->
+      <div class="gauge-col">
+        <div class="phase-label" id="phaseLabel">就绪</div>
+
+        <div class="gauge-wrap" aria-label="网速仪表盘">
+          <svg viewBox="0 0 320 190">
+            <!-- track -->
+            <path d="M 28 168 A 132 132 0 0 1 292 168" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+            <!-- colored ticks segments (decorative) -->
+            <path d="M 28 168 A 132 132 0 0 1 292 168" fill="none" stroke="var(--teal)" stroke-width="14" stroke-linecap="round"
+              id="gaugeArc" stroke-dasharray="415" stroke-dashoffset="415" style="transition:stroke-dashoffset .25s ease, stroke .2s"/>
+            <!-- scale labels -->
+            <text x="28" y="188" font-size="11" fill="var(--muted)" text-anchor="middle">0</text>
+            <text x="72" y="62" font-size="11" fill="var(--muted)" text-anchor="middle">10</text>
+            <text x="160" y="22" font-size="11" fill="var(--muted)" text-anchor="middle">100</text>
+            <text x="248" y="62" font-size="11" fill="var(--muted)" text-anchor="middle">500</text>
+            <text x="292" y="188" font-size="11" fill="var(--muted)" text-anchor="middle">1000</text>
+          </svg>
+          <div class="gauge-center">
+            <div class="big-num" id="bigNum">—</div>
+            <div class="big-unit" id="bigUnit">Mbps</div>
+            <div class="big-sub" id="bigSub">点下方按钮开始测速</div>
+          </div>
+        </div>
+
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+        <div class="cta-row">
+          <button class="btn-primary" id="startBtn">开始测速</button>
+          <button class="btn-ghost" id="stopBtn" disabled>停止</button>
+        </div>
+
+        <div class="error-banner" id="errorBanner"></div>
+
+        <div class="live-chart">
+          <div class="live-chart-head"><span>实时速率曲线</span><span id="chartLabel">— Mbps</span></div>
+          <canvas id="chart" width="680" height="144"></canvas>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="side-col">
+        <div class="metrics">
+          <div class="metric" id="mPing">
+            <div class="metric-label">◷ 延迟 PING</div>
+            <div><span class="metric-val" id="pingVal">—</span> <span class="metric-unit">ms</span></div>
+            <div class="metric-note" id="pingNote">抖动 — ms</div>
+          </div>
+          <div class="metric" id="mDown">
+            <div class="metric-label">↓ 下载</div>
+            <div><span class="metric-val" id="downVal">—</span> <span class="metric-unit">Mbps</span></div>
+            <div class="metric-note" id="downNote">— MB 已下载</div>
+          </div>
+          <div class="metric" id="mUp">
+            <div class="metric-label">↑ 上传</div>
+            <div><span class="metric-val" id="upVal">—</span> <span class="metric-unit">Mbps</span></div>
+            <div class="metric-note" id="upNote">— MB 已上传</div>
+          </div>
+        </div>
+
+        <div class="verdict" id="verdictBox">
+          <h3>这网速能干什么？</h3>
+          <p id="verdictText">测完后这里会直接告诉你：能不能流畅看 4K、开视频会议、打游戏，以及瓶颈在哪一项。</p>
+          <div class="tags" id="verdictTags">
+            <span class="tag">4K 视频</span><span class="tag">高清会议</span><span class="tag">在线游戏</span><span class="tag">大文件下载</span>
+          </div>
+        </div>
+
+        <div class="detail-list">
+          <div class="detail-row"><span>你的 IP</span><span id="dIp">检测中…</span></div>
+          <div class="detail-row"><span>所在地 / 运营商</span><span id="dIsp">检测中…</span></div>
+          <div class="detail-row"><span>测试节点</span><span id="dNode">自动选择（多节点容错）</span></div>
+          <div class="detail-row"><span>本次用时</span><span id="dDuration">—</span></div>
+          <div class="detail-row"><span>总流量</span><span id="dTraffic">—</span></div>
+        </div>
+
+        <div class="actions-row">
+          <button class="small-btn" id="copyBtn">📋 复制结果</button>
+          <button class="small-btn" id="againBtn">↻ 再测一次</button>
+        </div>
+        <div class="copied" id="copiedMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="below">
+    <div class="panel">
+      <div class="panel-head"><h2>本次会话记录</h2><span id="historyCount">暂无记录</span></div>
+      <div id="historyBody">
+        <div class="history-empty">还没有测速记录。测一次后，结果会出现在这里，方便对比换不换节点、有线和 Wi-Fi 的差别。</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>怎么看结果</h2><span>参考</span></div>
+      <div class="explain">
+        <b>延迟</b> 越低越好：&lt;30ms 很流畅，30–80ms 正常，&gt;100ms 游戏和会议会明显卡。
+        <ul>
+          <li><b>下载</b>：25 Mbps 可看一路 4K，100 Mbps 一家人同时用没压力，500 Mbps+ 属千兆宽带。</li>
+          <li><b>上传</b>：影响发文件、直播、云盘备份，低于 10 Mbps 会明显慢。</li>
+          <li><b>抖动</b>：延迟忽高忽低的程度，&gt;20ms 说明线路不稳，优先查 Wi-Fi。</li>
+        </ul>
+        <div style="margin-top:10px">开着小火箭测时，测到的是「你 → 代理节点 → 测速节点」这条实际在用的线路速度。换个节点再测一次对比，正好能看出瓶颈在本地宽带还是在代理线路。</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">测速原理：在你的浏览器里真实下载 / 上传数据到测速节点并计时，不是模拟数字。内置多个节点（Cloudflare、jsDelivr、npmmirror 等），一个不通会自动换下一个。测速会消耗流量，多线程一次约 80–200 MB，手机流量请留意。</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var startBtn=$('startBtn'), stopBtn=$('stopBtn'), againBtn=$('againBtn'), copyBtn=$('copyBtn');
+  var bigNum=$('bigNum'), bigUnit=$('bigUnit'), bigSub=$('bigSub'), phaseLabel=$('phaseLabel');
+  var gaugeArc=$('gaugeArc'), progressFill=$('progressFill');
+  var pingVal=$('pingVal'), pingNote=$('pingNote'), downVal=$('downVal'), downNote=$('downNote'), upVal=$('upVal'), upNote=$('upNote');
+  var mPing=$('mPing'), mDown=$('mDown'), mUp=$('mUp');
+  var chart=$('chart'), ctx=chart.getContext('2d'), chartLabel=$('chartLabel');
+  var errorBanner=$('errorBanner');
+
+  var ARC_LEN=415;
+  var state={ running:false, aborted:false, threads:4, history:[] };
+  var result={ ping:null, jitter:null, down:null, up:null, downBytes:0, upBytes:0, startTime:0, duration:0 };
+
+  // mode seg
+  $('segSingle').addEventListener('click', function(){ setThreads(1); });
+  $('segMulti').addEventListener('click', function(){ setThreads(4); });
+  function setThreads(n){
+    state.threads=n;
+    $('segSingle').classList.toggle('active', n===1);
+    $('segMulti').classList.toggle('active', n===4);
+    $('modeHint').textContent = n===1 ? '单线程更能看出单连接的真实速度' : '多线程更接近日常测速软件的结果';
+  }
+
+  // connection info
+  try{
+    var c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+    if(c && c.effectiveType){ $('connPill').style.display=''; $('connType').textContent=(c.type?c.type+' · ':'')+c.effectiveType.toUpperCase(); }
+  }catch(e){}
+  $('netStatus').textContent = navigator.onLine ? '已联网' : '未联网';
+  $('netDot').className='dot'+(navigator.onLine?'':' off');
+  window.addEventListener('online',function(){ $('netStatus').textContent='已联网'; $('netDot').className='dot'; });
+  window.addEventListener('offline',function(){ $('netStatus').textContent='未联网'; $('netDot').className='dot off'; });
+
+  // IP info: multi-source fallback chain (one blocked source must not blank it out)
+  (function loadIp(){
+    fetchT('https://www.cloudflare.com/cdn-cgi/trace', {}, 5000).then(function(r){ return r.text(); }).then(function(t){
+      var m={}; t.split('\n').forEach(function(line){ var i=line.indexOf('='); if(i>0) m[line.slice(0,i)]=line.slice(i+1); });
+      if(!m.ip) throw new Error('empty');
+      $('dIp').textContent=m.ip;
+      $('dIsp').textContent=(m.loc||'—')+(m.colo?' · 节点 '+m.colo:'');
+    }).catch(function(){
+      return fetchT('https://ipapi.co/json/', {}, 5000).then(function(r){ return r.json(); }).then(function(j){
+        if(!j || !j.ip) throw new Error('empty');
+        $('dIp').textContent=j.ip;
+        var parts=[]; if(j.city) parts.push(j.city); if(j.country_name) parts.push(j.country_name); if(j.org) parts.push(j.org);
+        $('dIsp').textContent=parts.length? parts.join(' · ') : '—';
+      });
+    }).catch(function(){
+      return fetchT('https://api.ipify.org?format=json', {}, 5000).then(function(r){ return r.json(); }).then(function(j){
+        if(j && j.ip){ $('dIp').textContent=j.ip; $('dIsp').textContent='运营商未知'; }
+        else throw new Error('empty');
+      });
+    }).catch(function(){
+      $('dIp').textContent='未能获取'; $('dIsp').textContent='未能获取（不影响测速）';
+    });
+  })();
+
+  // gauge: log scale 0..1000
+  function speedToFraction(mbps){
+    if(!mbps||mbps<=0) return 0;
+    // log10 scale: 1 -> ~0.06, 10->0.33, 100->0.66, 1000->1
+    var f=Math.log10(Math.max(1,mbps))/3;
+    return Math.min(1, Math.max(0, f));
+  }
+  function setGauge(mbps, color){
+    var f=speedToFraction(mbps);
+    gaugeArc.style.strokeDashoffset=String(ARC_LEN*(1-f));
+    if(color) gaugeArc.style.stroke=color;
+    bigNum.textContent = (mbps==null||isNaN(mbps)) ? '—' : (mbps>=100? Math.round(mbps) : (Math.round(mbps*10)/10));
+  }
+  function fmt(n, d){ if(n==null||isNaN(n)) return '—'; return d? n.toFixed(d) : String(Math.round(n)); }
+  function fmtMB(bytes){ return (bytes/1048576).toFixed(1); }
+
+  // chart
+  var samples=[];
+  function drawChart(){
+    var w=chart.width, h=chart.height;
+    ctx.clearRect(0,0,w,h);
+    // grid
+    ctx.strokeStyle='rgba(127,140,150,.18)'; ctx.lineWidth=1;
+    for(var gy=1;gy<4;gy++){ ctx.beginPath(); ctx.moveTo(0,h*gy/4); ctx.lineTo(w,h*gy/4); ctx.stroke(); }
+    if(samples.length<2) return;
+    var max=10; for(var i=0;i<samples.length;i++) if(samples[i]>max) max=samples[i];
+    max*=1.15;
+    var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+    ctx.beginPath();
+    samples.forEach(function(v,i){
+      var x=i/(119)*w, y=h-6-(v/max)*(h-16);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle='#0a9d8a'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
+    // fill
+    ctx.lineTo((samples.length-1)/119*w, h); ctx.lineTo(0,h); ctx.closePath();
+    ctx.fillStyle= dark ? 'rgba(20,184,160,.14)' : 'rgba(10,157,138,.10)'; ctx.fill();
+  }
+  function pushSample(v){ samples.push(v); if(samples.length>120) samples.shift(); chartLabel.textContent=fmt(v, v<10?2:0)+' Mbps'; drawChart(); }
+  drawChart();
+
+  function setPhase(text, testing){
+    phaseLabel.textContent=text;
+    phaseLabel.classList.toggle('testing', !!testing);
+  }
+  function setActive(which){
+    [mPing,mDown,mUp].forEach(function(el){el.classList.remove('active');});
+    if(which==='ping') mPing.classList.add('active');
+    if(which==='down') mDown.classList.add('active');
+    if(which==='up') mUp.classList.add('active');
+  }
+  function showError(msg){ errorBanner.textContent=msg; errorBanner.classList.remove('warn'); errorBanner.classList.add('show'); }
+  function showWarn(msg){ errorBanner.textContent=msg; errorBanner.classList.add('warn'); errorBanner.classList.add('show'); }
+  function hideError(){ errorBanner.classList.remove('show'); errorBanner.classList.remove('warn'); }
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+  // fetch with hard timeout, so a hung/blocked endpoint can never stall the test
+  function fetchT(url, opts, ms){
+    opts=opts||{};
+    var ctrl=('AbortController' in window)? new AbortController() : null;
+    if(ctrl) opts.signal=ctrl.signal;
+    var to=ctrl? setTimeout(function(){ try{ctrl.abort();}catch(e){} }, ms||6000) : null;
+    return fetch(url, opts).then(function(r){ if(to) clearTimeout(to); return r; }, function(e){ if(to) clearTimeout(to); throw e; });
+  }
+
+  // ---------- PING (multi-endpoint, fault tolerant) ----------
+  function pingOnce(url, noCors){
+    var t0=performance.now();
+    var opts={ cache:'no-store' };
+    if(noCors) opts.mode='no-cors';
+    return fetchT(url, opts, 3000).then(function(r){
+      if(!noCors && r && r.status>=500) throw new Error('bad-status');
+      return performance.now()-t0;
+    });
+  }
+  function pingSeries(url, noCors, n){
+    var times=[];
+    var p=Promise.resolve();
+    for(var i=0;i<n;i++){
+      (function(idx){
+        p=p.then(function(){
+          if(state.aborted) throw 'abort';
+          return pingOnce(url+(url.indexOf('?')>=0?'&':'?')+'cb='+Date.now()+'-'+idx, noCors)
+            .then(function(t){ times.push(t); })
+            .catch(function(e){ if(e==='abort') throw e; /* single failure is tolerated */ });
+        });
+      })(i);
+    }
+    return p.then(function(){ return times; });
+  }
+  function summarizePing(times){
+    var sorted=times.slice().sort(function(a,b){return a-b;});
+    // drop highest 2 outliers
+    var kept=sorted.slice(0, Math.max(3, sorted.length-2));
+    var avg=kept.reduce(function(a,b){return a+b;},0)/kept.length;
+    var jitter=0;
+    for(var j=1;j<times.length;j++) jitter+=Math.abs(times[j]-times[j-1]);
+    jitter = times.length>1 ? jitter/(times.length-1) : 0;
+    return { ping: avg, jitter: jitter };
+  }
+  function measurePing(){
+    var endpoints=[
+      { url:'https://speed.cloudflare.com/__down?bytes=0', noCors:false },
+      { url:'https://cdn.jsdelivr.net/npm/jquery@3.7.1/package.json', noCors:false },
+      { url:'https://www.gstatic.com/generate_204', noCors:true }
+    ];
+    var idx=0;
+    function tryNext(){
+      if(state.aborted) return Promise.reject('abort');
+      if(idx>=endpoints.length) return Promise.reject(new Error('ping-failed'));
+      var ep=endpoints[idx++];
+      return pingSeries(ep.url, ep.noCors, 8).then(function(times){
+        if(times.length>=3) return summarizePing(times);
+        return tryNext();
+      });
+    }
+    return tryNext();
+  }
+
+  // ---------- PROVIDERS ----------
+  var DL_PROVIDERS=[
+    { name:'Cloudflare 边缘', kind:'stream', url:'https://speed.cloudflare.com/__down?bytes=100000000' },
+    { name:'jsDelivr CDN', kind:'file', url:'https://cdn.jsdelivr.net/npm/typescript@5.5.4/lib/typescript.js' },
+    { name:'npmmirror（阿里）', kind:'file', url:'https://registry.npmmirror.com/typescript/-/typescript-5.5.4.tgz' }
+  ];
+  var UP_PROVIDERS=[
+    { name:'Cloudflare 边缘', url:'https://speed.cloudflare.com/__up', cf:true },
+    { name:'Httpbin', url:'https://httpbin.org/post', size:200000 },
+    { name:'Postman Echo', url:'https://postman-echo.com/post', size:200000 },
+    { name:'gstatic 204', url:'https://www.gstatic.com/generate_204', nocors:true, size:100000 }
+  ];
+  var activeProvider=null;
+  function setNodeLabel(name){
+    activeProvider=name;
+    $('nodeName').textContent=name;
+    $('dNode').textContent=name;
+  }
+
+  // ---------- DOWNLOAD (per-provider attempt; resolves {ok:false} when the provider is unreachable) ----------
+  function measureDownload(provider, durationMs){
+    return new Promise(function(resolve){
+      var controllers=[];
+      var totalBytes=0;
+      var start=performance.now();
+      var lastBytes=0, lastTime=start;
+      var liveSpeeds=[];
+      var done=false, finished=false;
+
+      function worker(){
+        var ctrl=new AbortController(); controllers.push(ctrl);
+        var sep=provider.url.indexOf('?')>=0?'&':'?';
+        var url=provider.url+sep+'r='+Math.random();
+        return fetch(url, {signal:ctrl.signal, cache:'no-store'}).then(function(resp){
+          if(!resp.ok || !resp.body) return Promise.resolve();
+          var reader=resp.body.getReader();
+          function pump(){
+            if(done) return Promise.resolve();
+            return reader.read().then(function(res){
+              if(res.done) { return done? Promise.resolve() : worker(); }
+              totalBytes+=res.value.byteLength;
+              return pump();
+            }).catch(function(){ return Promise.resolve(); });
+          }
+          return pump();
+        }).catch(function(){ return Promise.resolve(); });
+      }
+      var workers=[];
+      for(var i=0;i<state.threads;i++) workers.push(worker());
+
+      function finish(ok){
+        if(finished) return; finished=true;
+        clearInterval(timer); done=true;
+        controllers.forEach(function(c){ try{c.abort();}catch(e){} });
+        var elapsed=(performance.now()-start)/1000;
+        var mbps=(totalBytes*8/1e6)/Math.max(elapsed,0.1);
+        resolve({ ok: !!ok && totalBytes>0, mbps: mbps, bytes: totalBytes, elapsed: elapsed });
+      }
+
+      var timer=setInterval(function(){
+        var now=performance.now();
+        var dt=(now-lastTime)/1000;
+        if(dt>0 && totalBytes>0){
+          var inst=((totalBytes-lastBytes)*8/1e6)/dt;
+          liveSpeeds.push(inst);
+          if(liveSpeeds.length>6) liveSpeeds.shift();
+          var smooth=liveSpeeds.reduce(function(a,b){return a+b;},0)/liveSpeeds.length;
+          result.downBytes=totalBytes;
+          downNote.textContent=fmtMB(totalBytes)+' MB 已下载';
+          setGauge(smooth);
+          bigSub.textContent='正在测下载速度…（节点：'+provider.name+'）';
+          pushSample(smooth);
+        }
+        lastBytes=totalBytes; lastTime=now;
+        progressFill.style.width=(18+ Math.min(47,(now-start)/durationMs*47))+'%';
+        if(state.aborted){ finish(false); return; }
+        // stall detection: nothing arrived after 3.5s -> this provider is blocked, bail out fast
+        if(now-start>3500 && totalBytes===0){ finish(false); return; }
+        if(now-start>=durationMs){ finish(true); }
+      }, 250);
+    });
+  }
+
+  // ---------- UPLOAD ----------
+  // Measured with XHR upload-progress events: bytes count as soon as they actually
+  // leave the machine, so a slow/blocked echo RESPONSE can no longer zero the result.
+  // The Blob type is text/plain (a CORS-safelisted type) so no OPTIONS preflight is
+  // sent — one less request for a restrictive proxy line to intercept.
+  // Resolves {ok:false} only when not a single byte got out.
+  function measureUpload(provider, durationMs){
+    return new Promise(function(resolve){
+      if(provider.nocors) return resolve(measureUploadNoCors(provider, durationMs));
+      var totalSent=0;
+      var start=performance.now();
+      var done=false, finished=false;
+      var size= provider.cf ? (state.threads>1 ? 1000000 : 500000) : (provider.size||200000);
+      var buf=new Uint8Array(size);
+      for(var i=0;i<size;i+=4096){ buf[i]=Math.floor(Math.random()*256); }
+      var payload=new Blob([buf], {type:'text/plain'});
+      var xhrs=[];
+      var lastBytes=0, lastTime=start, live=[];
+
+      function worker(){
+        if(done) return;
+        var xhr=new XMLHttpRequest();
+        xhrs.push(xhr);
+        var lastLoaded=0;
+        var sep=provider.url.indexOf('?')>=0?'&':'?';
+        try{ xhr.open('POST', provider.url+sep+'r='+Math.random(), true); }catch(e){ return; }
+        if(xhr.upload){
+          xhr.upload.onprogress=function(ev){
+            if(ev.lengthComputable){
+              var d=ev.loaded-lastLoaded;
+              if(d>0){ totalSent+=d; lastLoaded=ev.loaded; }
+            }
+          };
+        }
+        function next(){ if(!done) worker(); }
+        xhr.onload=next;   // even a 4xx/5xx means the bytes went out; progress already counted them
+        xhr.onerror=next;  // CORS/network error surfaces only after the body was sent
+        xhr.ontimeout=next;
+        xhr.timeout=15000;
+        try{ xhr.send(payload); }catch(e){ next(); }
+      }
+      for(var i=0;i<state.threads;i++) worker();
+
+      function finish(ok){
+        if(finished) return; finished=true;
+        clearInterval(timer); done=true;
+        xhrs.forEach(function(x){ try{x.abort();}catch(e){} });
+        var elapsed=(performance.now()-start)/1000;
+        var mbps=(totalSent*8/1e6)/Math.max(elapsed,0.1);
+        resolve({ ok: !!ok && totalSent>0, mbps: mbps, bytes: totalSent, elapsed: elapsed });
+      }
+
+      var timer=setInterval(function(){
+        var now=performance.now();
+        var dt=(now-lastTime)/1000;
+        if(dt>0 && totalSent>0){
+          var inst=((totalSent-lastBytes)*8/1e6)/dt;
+          live.push(inst); if(live.length>6) live.shift();
+          var smooth=live.reduce(function(a,b){return a+b;},0)/live.length;
+          result.upBytes=totalSent;
+          upNote.textContent=fmtMB(totalSent)+' MB 已上传';
+          setGauge(smooth, '#d97706');
+          bigSub.textContent='正在测上传速度…（接口：'+provider.name+'）';
+          pushSample(smooth);
+        }
+        lastBytes=totalSent; lastTime=now;
+        progressFill.style.width=(65+ Math.min(32,(now-start)/durationMs*32))+'%';
+        if(state.aborted){ finish(false); return; }
+        // stall detection: not a single byte left the machine after 5s -> endpoint blocked, bail out fast
+        if(now-start>5000 && totalSent===0){ finish(false); return; }
+        if(now-start>=durationMs){ finish(totalSent>0); }
+      },250);
+    });
+  }
+
+  // Last-resort upload channel: POST in no-cors mode to a generate_204 endpoint.
+  // The response is opaque and unreadable, but the fetch only resolves once the
+  // request has gone out and an answer came back, so completed requests still
+  // prove (and measure) real upload throughput on lines that block echo APIs.
+  function measureUploadNoCors(provider, durationMs){
+    return new Promise(function(resolve){
+      var totalBytes=0;
+      var start=performance.now();
+      var done=false, finished=false;
+      var size=provider.size||100000;
+      var buf=new Uint8Array(size);
+      for(var i=0;i<size;i+=4096){ buf[i]=Math.floor(Math.random()*256); }
+      var payload=new Blob([buf], {type:'text/plain'});
+      var lastBytes=0, lastTime=start, live=[];
+
+      function worker(){
+        if(done) return Promise.resolve();
+        return fetchT(provider.url, {method:'POST', body:payload, mode:'no-cors', cache:'no-store'}, 10000)
+          .then(function(){ if(!done){ totalBytes+=size; return worker(); } })
+          .catch(function(){ if(!done) return sleep(80).then(worker); });
+      }
+      for(var i=0;i<state.threads;i++) worker();
+
+      function finish(ok){
+        if(finished) return; finished=true;
+        clearInterval(timer); done=true;
+        var elapsed=(performance.now()-start)/1000;
+        var mbps=(totalBytes*8/1e6)/Math.max(elapsed,0.1);
+        resolve({ ok: !!ok && totalBytes>0, mbps: mbps, bytes: totalBytes, elapsed: elapsed });
+      }
+
+      var timer=setInterval(function(){
+        var now=performance.now();
+        var dt=(now-lastTime)/1000;
+        if(dt>0 && totalBytes>0){
+          var inst=((totalBytes-lastBytes)*8/1e6)/dt;
+          live.push(inst); if(live.length>6) live.shift();
+          var smooth=live.reduce(function(a,b){return a+b;},0)/live.length;
+          result.upBytes=totalBytes;
+          upNote.textContent=fmtMB(totalBytes)+' MB 已上传';
+          setGauge(smooth, '#d97706');
+          bigSub.textContent='正在测上传速度…（接口：'+provider.name+'）';
+          pushSample(smooth);
+        }
+        lastBytes=totalBytes; lastTime=now;
+        progressFill.style.width=(65+ Math.min(32,(now-start)/durationMs*32))+'%';
+        if(state.aborted){ finish(false); return; }
+        if(now-start>5000 && totalBytes===0){ finish(false); return; }
+        if(now-start>=durationMs){ finish(totalBytes>0); }
+      },250);
+    });
+  }
+
+  // ---------- VERDICT ----------
+  function renderVerdict(){
+    var d=result.down||0, u=result.up||0, p=result.ping||999;
+    var text='', tags=[];
+    if(d>=300) text='宽带很强。下载 <b>'+Math.round(d)+' Mbps</b>，属于千兆档，多人同时看 4K、下载大文件都不用排队。';
+    else if(d>=100) text='宽带够全家用。下载 <b>'+Math.round(d)+' Mbps</b>，看 4K、开会、下载游戏都能兼顾。';
+    else if(d>=50) text='日常够用。下载 <b>'+Math.round(d)+' Mbps</b>，高清视频和会议没问题，多人同时抢带宽时会互相影响。';
+    else if(d>=25) text='勉强够用。下载 <b>'+Math.round(d)+' Mbps</b>，能看一路 4K，但大文件和更新会等得久。';
+    else text='网速偏慢。下载只有 <b>'+Math.round(d)+' Mbps</b>，先分清是 Wi-Fi 信号、代理线路还是宽带本身的问题。';
+    if(p>100) text+=' 另外延迟 <b>'+Math.round(p)+' ms</b> 偏高，游戏和会议会卡，优先查 Wi-Fi 或代理节点。';
+    else if(result.jitter!=null && result.jitter>20) text+=' 抖动 <b>'+Math.round(result.jitter)+' ms</b> 偏大，线路不稳，视频通话容易时好时坏。';
+    if(u>0 && u<10) text+=' 上传只有 <b>'+Math.round(u)+' Mbps</b>，发大文件、传云盘会明显慢。';
+    $('verdictText').innerHTML=text;
+    function tg(label, ok){ return '<span class="tag '+(ok?'ok':'no')+'">'+(ok?'✓ ':'')+label+'</span>'; }
+    var html='';
+    html+=tg('4K 视频', d>=25);
+    html+=tg('高清会议', d>=10 && u>=5 && p<120);
+    html+=tg('在线游戏', p<60 && (result.jitter==null||result.jitter<20));
+    html+=tg('大文件下载', d>=100);
+    html+=tg('直播 / 大文件上传', u>=20);
+    $('verdictTags').innerHTML=html;
+  }
+
+  function addHistory(){
+    var now=new Date();
+    var hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0'), ss=String(now.getSeconds()).padStart(2,'0');
+    state.history.unshift({ time:hh+':'+mm+':'+ss, ping:result.ping, down:result.down, up:result.up });
+    if(state.history.length>8) state.history.pop();
+    $('historyCount').textContent='共 '+state.history.length+' 次 · 仅本次打开期间保留';
+    var html='<div class="hrow head"><span>时间</span><span>延迟</span><span>下载 Mbps</span><span>上传 Mbps</span></div>';
+    state.history.forEach(function(h){
+      html+='<div class="hrow"><span>'+h.time+'</span><span><b>'+fmt(h.ping)+'</b> ms</span><span><b style="color:var(--teal)">'+fmt(h.down)+'</b></span><span><b style="color:var(--amber)">'+fmt(h.up)+'</b></span></div>';
+    });
+    $('historyBody').innerHTML=html;
+  }
+
+  function resultText(){
+    var now=new Date();
+    return '网速测试结果（'+now.toLocaleString('zh-CN')+'）\n'
+      +'延迟：'+fmt(result.ping)+' ms（抖动 '+fmt(result.jitter)+' ms）\n'
+      +'下载：'+fmt(result.down)+' Mbps\n'
+      +'上传：'+fmt(result.up)+' Mbps\n'
+      +'模式：'+(state.threads===1?'单线程':'多线程 ×4')+' · 节点：'+(activeProvider||'自动选择');
+  }
+
+  copyBtn.addEventListener('click', function(){
+    var t=resultText();
+    function done(){ $('copiedMsg').textContent='已复制，可直接粘贴发送'; setTimeout(function(){$('copiedMsg').textContent='';},2500); }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done).catch(function(){ fallback(); }); }
+    else fallback();
+    function fallback(){
+      var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); done(); }catch(e){ $('copiedMsg').textContent='复制失败，请手动记录结果'; }
+      document.body.removeChild(ta);
+    }
+  });
+
+  // ---------- RUN ----------
+  function resetUI(){
+    hideError();
+    result={ ping:null, jitter:null, down:null, up:null, downBytes:0, upBytes:0, startTime:performance.now(), duration:0 };
+    pingVal.textContent='—'; downVal.textContent='—'; upVal.textContent='—';
+    pingNote.textContent='抖动 — ms'; downNote.textContent='— MB 已下载'; upNote.textContent='— MB 已上传';
+    $('dDuration').textContent='—'; $('dTraffic').textContent='—';
+    samples=[]; drawChart(); chartLabel.textContent='— Mbps';
+    setGauge(0); bigNum.textContent='—'; gaugeArc.style.stroke='var(--teal)';
+    progressFill.style.width='0%';
+  }
+
+  function runTest(){
+    if(state.running) return;
+    if(!navigator.onLine){ showError('当前看起来没有网络连接，请检查 Wi-Fi / 网线 / 代理后再试。'); return; }
+    state.running=true; state.aborted=false;
+    startBtn.disabled=true; stopBtn.disabled=false;
+    startBtn.textContent='测速中…';
+    resetUI();
+    var t0=performance.now();
+
+    (async function(){
+      try{
+        var partialNotes=[];
+
+        // ping (failure here no longer aborts the whole test)
+        setPhase('正在测延迟', true); setActive('ping'); bigSub.textContent='正在测延迟与抖动…'; progressFill.style.width='8%';
+        try{
+          var pr=await measurePing();
+          if(state.aborted) throw 'abort';
+          result.ping=pr.ping; result.jitter=pr.jitter;
+          pingVal.textContent=fmt(pr.ping);
+          pingNote.textContent='抖动 '+fmt(pr.jitter)+' ms';
+        }catch(pe){
+          if(pe==='abort' || state.aborted) throw 'abort';
+          pingNote.textContent='延迟未测出';
+          partialNotes.push('延迟没测出来（探测请求被当前线路拦截）');
+        }
+        progressFill.style.width='18%';
+
+        // download, walking the provider list until one actually delivers bytes
+        setPhase('正在测下载', true); setActive('down'); gaugeArc.style.stroke='var(--teal)';
+        var dr=null;
+        for(var di=0; di<DL_PROVIDERS.length && !dr; di++){
+          if(state.aborted) throw 'abort';
+          bigSub.textContent='正在测下载速度…（节点：'+DL_PROVIDERS[di].name+'）';
+          var dAttempt=await measureDownload(DL_PROVIDERS[di], 10000);
+          if(state.aborted) throw 'abort';
+          if(dAttempt.ok){ dr=dAttempt; setNodeLabel(DL_PROVIDERS[di].name); }
+        }
+        if(!dr) throw new Error('download-failed');
+        result.down=dr.mbps; result.downBytes=dr.bytes;
+        downVal.textContent=fmt(dr.mbps);
+        setGauge(dr.mbps); bigSub.textContent='下载完成';
+
+        // upload, walking the endpoint list the same way
+        setPhase('正在测上传', true); setActive('up');
+        await sleep(350);
+        samples=[]; drawChart();
+        var ur=null;
+        for(var ui=0; ui<UP_PROVIDERS.length && !ur; ui++){
+          if(state.aborted) throw 'abort';
+          var uAttempt=await measureUpload(UP_PROVIDERS[ui], 8000);
+          if(state.aborted) throw 'abort';
+          if(uAttempt.ok){ ur=uAttempt; }
+        }
+        if(ur){ result.up=ur.mbps; result.upBytes=ur.bytes; upVal.textContent=fmt(ur.mbps); }
+        else { upNote.textContent='上传未测出'; partialNotes.push('上传没测出来（上传接口被当前线路拦截）'); }
+
+        // finish
+        progressFill.style.width='100%';
+        setPhase(partialNotes.length? '测速完成（部分项目未测出）' : '测速完成', false); setActive(null);
+        setGauge(result.down); gaugeArc.style.stroke='var(--teal)';
+        bigNum.textContent=fmt(result.down);
+        bigUnit.textContent='Mbps · 下载';
+        bigSub.textContent='延迟 '+fmt(result.ping)+' ms · 上传 '+fmt(result.up)+' Mbps';
+        result.duration=(performance.now()-t0)/1000;
+        $('dDuration').textContent=result.duration.toFixed(1)+' 秒';
+        $('dTraffic').textContent=fmtMB(result.downBytes+result.upBytes)+' MB';
+        renderVerdict();
+        addHistory();
+        if(partialNotes.length) showWarn('部分项目没测成：'+partialNotes.join('；')+'。已测出的数据是真实的；在小火箭里换一个节点再测一次，可以把缺的补上（不要关代理，关了这边也连不上）。');
+      }catch(e){
+        if(e==='abort' || state.aborted){
+          setPhase('已停止', false); setActive(null);
+          bigSub.textContent='测速已停止，可重新开始';
+          // keep partial download if we have it
+          if(result.down){ downVal.textContent=fmt(result.down); }
+        } else {
+          console.error(e);
+          if(e && e.message==='download-failed'){
+            showError('内置的几个测速节点都没连上：下载数据一个字节都没下来。这不是网速慢，而是测速地址被当前线路挡住了（代理规则拦截或代理节点限制最常见）。在小火箭里换一个节点再测一次即可（不要关代理，关了这边也连不上）。');
+          } else {
+            showError('测速没跑通，可能是网络中途断开。在小火箭里换个节点再试一次；如果反复失败，多半是当前线路把测速地址挡住了。');
+          }
+          setPhase('测速失败', false); setActive(null);
+          bigSub.textContent='测速失败，见下方提示';
+        }
+      } finally {
+        state.running=false;
+        startBtn.disabled=false; stopBtn.disabled=true;
+        startBtn.textContent='重新测速';
+        bigUnit.textContent='Mbps';
+        result.duration=(performance.now()-t0)/1000;
+        if($('dDuration').textContent==='—') $('dDuration').textContent=result.duration.toFixed(1)+' 秒';
+      }
+    })();
+  }
+
+  startBtn.addEventListener('click', runTest);
+  againBtn.addEventListener('click', runTest);
+  stopBtn.addEventListener('click', function(){ state.aborted=true; });
+})();
+</script>
+</body>
+</html>
